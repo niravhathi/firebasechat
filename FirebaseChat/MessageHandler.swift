@@ -35,22 +35,22 @@ class MessageHandler {
         
     }
     
-    func sendMediaMessage(senderId: String, senderName: String, url: String) {
+    func sendMediaMessage(senderId: String, senderName: String, url: String,stringChatID:String) {
         let data: [String: Any] = [Constants.SENDER_ID: senderId, Constants.SENDER_NAME: senderName, Constants.URL: url]
         
-        DatabaseHelper.Instance.mediaMessagesRef.childByAutoId().setValue(data)
+        DatabaseHelper.Instance.messagesRef.child(stringChatID).childByAutoId().setValue(data)
     }
     
-    func sendMedia(image: Data?, video: URL?, senderId: String, senderName: String) {
+    func sendMedia(image: Data?, video: URL?, senderId: String, senderName: String,stringChatID:String) {
         if image != nil {
             DatabaseHelper.Instance.imageStorageRef.child(senderId + "\(NSUUID().uuidString).jpg").put(image!, metadata: nil, completion: { (metadata: FIRStorageMetadata?, error: Error?) in
                 guard error == nil else { return }
-                self.sendMediaMessage(senderId: senderId, senderName: senderName, url: String(describing: metadata!.downloadURL()!))
+                self.sendMediaMessage(senderId: senderId, senderName: senderName, url: String(describing: metadata!.downloadURL()!), stringChatID: stringChatID)
             })
         } else  {
             DatabaseHelper.Instance.videoStorageRef.child(senderId + "\(NSUUID().uuidString)").putFile(video!, metadata: nil, completion: { (metadata: FIRStorageMetadata?, error: Error?) in
                 guard error == nil else { return }
-                self.sendMediaMessage(senderId: senderId, senderName: senderName, url: String(describing: metadata!.downloadURL()!))
+                self.sendMediaMessage(senderId: senderId, senderName: senderName, url: String(describing: metadata!.downloadURL()!), stringChatID: stringChatID)
             })
         }
     }
@@ -67,6 +67,9 @@ class MessageHandler {
                         if let text = data[Constants.TEXT] as? String {
                               print(Constants.CHAT_OBSERVER)
                             self.delegate?.messageReceived(senderId: senderId, senderName: senderName, text: text)
+                        }
+                        else if let fileUrl = data[Constants.URL] as? String {
+                            self.delegate?.mediaReceived(senderId: senderId, senderName: senderName, mediaUrl: fileUrl)
                         }
                     }
                     

@@ -19,6 +19,8 @@ class ChatViewController: JSQMessagesViewController {
     var messages = [JSQMessage]()
     var contact:Contact?
     var stringChatID = ""
+    
+    var isFromMediaPicker:Bool = false
     override func viewDidLoad() {
         super.viewDidLoad()
         self.senderId = AuthHelper.Instance.userId()
@@ -26,7 +28,7 @@ class ChatViewController: JSQMessagesViewController {
         
         picker.delegate = self
         MessageHandler.Instance.delegate = self
-       self.stringChatID =  AuthHelper.Instance.userId() + contact!.id
+        self.stringChatID =  AuthHelper.Instance.userId() + contact!.id
         
         DatabaseHelper.Instance.messagesRef.observeSingleEvent(of: .value, with: { (snapshot) in
             
@@ -43,7 +45,7 @@ class ChatViewController: JSQMessagesViewController {
                         MessageHandler.Instance.observeMessages(self.stringChatID)
                     }
                     else{
-                         MessageHandler.Instance.observeMessages(self.stringChatID)
+                        MessageHandler.Instance.observeMessages(self.stringChatID)
                     }
                     
                 })
@@ -51,7 +53,13 @@ class ChatViewController: JSQMessagesViewController {
         })
         
     }
-    
+    override func viewWillAppear(_ animated: Bool) {
+        
+       if(isFromMediaPicker == true)
+       {
+        self.isFromMediaPicker = false
+      }
+    }
     
     @IBAction func backButton(_ sender: UIBarButtonItem) {
         self.navigationController?.popViewController(animated: true)
@@ -112,8 +120,14 @@ class ChatViewController: JSQMessagesViewController {
         }
     }
     override func viewWillDisappear(_ animated: Bool) {
-        print(Constants.CHAT_OBSERVER)
-        DatabaseHelper.Instance.messagesRef.child(self.stringChatID).removeObserver(withHandle: Constants.CHAT_OBSERVER!)
+        
+        if(!isFromMediaPicker)
+        {
+            print(Constants.CHAT_OBSERVER)
+            DatabaseHelper.Instance.messagesRef.child(self.stringChatID).removeObserver(withHandle: Constants.CHAT_OBSERVER!)
+            
+        }
+       
         //DatabaseHelper.Instance.messagesRef.removeAllObservers()
     }
 }
@@ -121,6 +135,7 @@ class ChatViewController: JSQMessagesViewController {
 extension ChatViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     private func chooseMedia(type: CFString) {
         picker.mediaTypes = [type as String]
+        self.isFromMediaPicker = true
         present(picker, animated: true, completion: nil)
         
     }
@@ -145,13 +160,17 @@ extension ChatViewController: UIImagePickerControllerDelegate, UINavigationContr
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
         if let image = info[UIImagePickerControllerOriginalImage] as? UIImage {
             let data = UIImageJPEGRepresentation(image, 0.01)
-            MessageHandler.Instance.sendMedia(image: data, video: nil, senderId: senderId, senderName: senderDisplayName)
+            MessageHandler.Instance.sendMedia(image: data, video: nil, senderId: senderId, senderName: senderDisplayName,stringChatID:self.stringChatID)
             
         } else if let videoURL = info[UIImagePickerControllerMediaURL] as? URL {
-            MessageHandler.Instance.sendMedia(image: nil, video: videoURL, senderId: senderId, senderName: senderDisplayName)
+            MessageHandler.Instance.sendMedia(image: nil, video: videoURL, senderId: senderId, senderName: senderDisplayName,stringChatID:self.stringChatID)
         }
         self.dismiss(animated: true, completion: nil)
+        
         collectionView.reloadData()
+    }
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        
     }
 }
 
